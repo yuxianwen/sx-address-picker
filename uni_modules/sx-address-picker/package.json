@@ -1,7 +1,7 @@
 {
   "id": "sx-address-picker",
   "displayName": "仿淘宝地址选择 地址选择器 address-picker 省市区 海外选择",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "该组件高仿淘宝地址省市区区域的picker交互效果，效果基本一致。",
   "keywords": [
     "address-picker",
@@ -9,7 +9,7 @@
     "地址选择",
     "海外"
 ],
-  "repository": "",
+  "repository": "https://github.com/yuxianwen/sx-address-picker",
   "engines": {
     "HBuilderX": "^3.6.11"
   },

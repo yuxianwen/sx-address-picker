@@ -12,7 +12,9 @@
 			<uni-list v-for="item in activeItems" :key="item.code" :border="false">
 				<uni-list-item show-arrow clickable @click="selectLevel(item)">
 					<template v-slot:header>
-						<view :class="activeLevel === item.level-1 ? 'primary-text':''">{{item.name ||selectTitle }}
+						<view
+							:class="(activeLevel === item.level-1 || !item.name || world ==1) ? 'sx-address-picker__select--active':''">
+							{{item.name ||selectTitle }}
 						</view>
 					</template>
 				</uni-list-item>
@@ -105,16 +107,21 @@
 				list: [],
 				activeLevel: -1,
 				activeIndex: -1,
-				level0: '',
 				activeItems: [],
 				childList: []
-
 			}
 		},
 		methods: {
 			// 弹窗是否显示状态事件
 			popChange(e) {
-				this.$emit('input', e.show)
+				const status = e.show
+				// pref: 选择省市区未选择完毕重置
+				if (this.world == 0 && this.activeLevel !== 3 && !status) {
+					this.activeLevel = -1
+					this.activeIndex = -1
+					this.activeItems = []
+				}
+				this.$emit('input', status)
 			},
 			// 已选择项切换事件
 			selectLevel(item) {
@@ -219,6 +226,10 @@
 									return arr
 								}, [])
 								this.country = list;
+								if (this.selected.length) {
+									const item = list.find(v => this.selected[0] === v.name)
+									this.activeItems = [item]
+								}
 								this.loadingStatus = 'more'
 							} else {
 								this.loadingStatus = 'noMore'
@@ -322,6 +333,12 @@
 			font-weight: 500;
 			font-size: 18px;
 			margin-bottom: 20px;
+		}
+
+		&__select {
+			&--active {
+				color: $uni-color-primary;
+			}
 		}
 
 		&--divider {
