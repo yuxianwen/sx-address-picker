@@ -3,7 +3,7 @@
 		<view class="sx-address-picker">
 			<view class="sx-address-picker__close">
 				<uni-icons class="absolute" size="20" color="#ccc" type="closeempty"
-					@click="$refs.popup.close"></uni-icons>
+					@click.native="$refs.popup.close"></uni-icons>
 			</view>
 			<view class="sx-address-picker__title">
 				请选择所在地区
