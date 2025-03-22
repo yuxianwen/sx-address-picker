@@ -31,14 +31,16 @@
 						</label>
 					</radio-group>
 					<!-- 后续计划TODO 常用城市 -->
-					<!-- <view class="font-5 font-weight-500 mb-4">
+					<!-- <view class="sx-address-picker__list-title">
 						{{quickTitle}}
 					</view>
-					<radio-group class="flex flex-wrap" @change="quickIndex = $event.detail.value">
-						<label class="mr-3" v-for="(item,index) in quickList" :key="item"
-							:class="world == index? 'active':''">
-							<radio class="none" :checked="world === item" :value="index + ''" />
-							<view class="radius bg-445 px-4 py-1 mb-3">{{item}}</view>
+					<radio-group class="sx-address-picker__quick" @change="quickIndex = $event.detail.value">
+						<label class="mr-3" v-for="(item,index) in quickList" :key="item">
+							<radio class="sx-address-picker__quick-radio" :checked="quickIndex === item"
+								:value="index + ''" />
+							<view class="sx-address-picker__quick-label" :class="{
+							 'sx-address-picker__quick--active': quickIndex == index
+							}">{{item}}</view>
 						</label>
 					</radio-group> -->
 				</template>
@@ -346,7 +348,7 @@
 		}
 
 		&__list {
-			max-height: 400px;
+			max-height: 48vh;
 			overflow-y: auto;
 			margin-top: 12px;
 
@@ -373,6 +375,31 @@
 
 			.uni-load-more {
 				padding: 100px 0;
+			}
+		}
+
+		&__quick {
+			display: flex;
+			flex-wrap: wrap;
+			font-size: 14px;
+			gap: 12px;
+			margin-bottom: 14px;
+
+			&-label {
+				padding: 5px 12px;
+				display: block;
+				border-radius: 99px;
+				background-color: #f4f3f3;
+			}
+
+			&-radio {
+
+				display: none;
+			}
+
+			&--active {
+				background-color: transparentize($uni-color-primary, 0.94);
+				color: $uni-color-primary;
 			}
 		}
 	}
