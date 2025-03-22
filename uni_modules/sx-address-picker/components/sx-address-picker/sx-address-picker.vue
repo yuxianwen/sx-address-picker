@@ -30,19 +30,19 @@
 								:value="index + ''" /><text>{{item}}</text>
 						</label>
 					</radio-group>
-					<!-- 后续计划TODO 常用城市 -->
-					<!-- <view class="sx-address-picker__list-title">
+					<!-- 常用城市 -->
+					<view class="sx-address-picker__list-title">
 						{{quickTitle}}
 					</view>
-					<radio-group class="sx-address-picker__quick" @change="quickIndex = $event.detail.value">
+					<radio-group class="sx-address-picker__quick" @change="quickSelectChange">
 						<label class="mr-3" v-for="(item,index) in quickList" :key="item">
-							<radio class="sx-address-picker__quick-radio" :checked="quickIndex === item"
+							<radio class="sx-address-picker__quick-radio" :checked="quickIndex === index.toString()"
 								:value="index + ''" />
 							<view class="sx-address-picker__quick-label" :class="{
-							 'sx-address-picker__quick--active': quickIndex == index
+							 'sx-address-picker__quick--active': quickIndex === index.toString()
 							}">{{item}}</view>
 						</label>
-					</radio-group> -->
+					</radio-group>
 				</template>
 				<view class="sx-address-picker__list-title">
 					{{selectTitle}}
@@ -82,11 +82,6 @@
 	const countryDataUrl =
 		"https://static-mp-97eb3f65-f610-4509-81e4-a6cd5df3859b.next.bspapp.com/cos/country.json"
 
-	// 后续计划TODO 常用城市、国家
-	// const quickCitys = ['上海市', '北京市', '苏州市', '杭州市', '广州市', '深圳市', '南京市', '天津市']
-	// const quickCountys = ['中国香港', '中国澳门', '中国台湾', '新加坡']
-
-
 	export default {
 		props: {
 			value: Boolean,
@@ -96,6 +91,18 @@
 					return []
 				}
 			},
+			quickCitys:{
+				type: Array,
+				default() {
+					return ['上海市', '北京市', '苏州市', '杭州市', '广州市', '深圳市', '南京市', '天津市']
+				}
+			},
+			quickCountys:{
+				type: Array,
+				default() {
+					return ['香港特别行政区', '澳门特别行政区', '台湾', '新加坡', '美国','加拿大']
+				}
+			}
 		},
 		data() {
 			return {
@@ -105,7 +112,7 @@
 				countryName: '',
 				country: [],
 				worlds: ['中国内地（大陆）', '港澳台地区及海外'],
-				quickIndex: '0',
+				quickIndex: '-1',
 				list: [],
 				activeLevel: -1,
 				activeIndex: -1,
@@ -222,14 +229,32 @@
 						url: countryDataUrl,
 						success: res => {
 							const data = res.data
-							if (data.others) {
-								const list = data.others.reduce((arr, v) => {
+							if (data.others || data.recommends) {
+								const others = data.others.reduce((arr, v) => {
 									arr.push(...v.items)
 									return arr
 								}, [])
-								this.country = list;
+								const recommends = data.recommends.reduce((arr, v) => {
+
+									arr.push(...v.items.map(v => {
+										const {
+											country,
+											divisionChain
+										} = v;
+										if (v.country) {
+											v = {
+												...country,
+												...divisionChain[0]
+											}
+
+										}
+										return v;
+									}))
+									return arr
+								}, [])
+								this.country = [...others, ...recommends];
 								if (this.selected.length) {
-									const item = list.find(v => this.selected[0] === v.name)
+									const item = this.country.find(v => this.selected[0] === v.name)
 									this.activeItems = [item]
 								}
 								this.loadingStatus = 'more'
@@ -259,6 +284,82 @@
 						this.getCountryData()
 						break;
 				}
+			},
+			quickSelectChange(e) {
+				const index = e.detail.value;
+				this.quickIndex = index;
+				
+				if (this.world === '0') {
+					// 处理快速选择城市
+					const cityName = this.quickCitys[parseInt(index)];
+					
+					// 直辖市处理：直接在省级列表中查找
+					const directCity = this.list.find(p => p.name === cityName);
+					
+					if (directCity) {
+						// 这是直辖市，直接作为省级处理
+						this.activeLevel = 0;
+						this.$set(this.activeItems, 0, directCity);
+						this.activeItems.splice(1); // 清除之前的选择
+						
+						// 如果有子级，自动添加一个空的子级占位
+						if (directCity.children && directCity.children.length) {
+							this.$set(this.activeItems, 1, {});
+						} else {
+							// 没有子级，直接关闭并返回结果
+							this.$refs.popup.close();
+							this.$emit('confirm', [{
+								code: 'CN',
+								level: -1,
+								name: '中国'
+							}, ...this.activeItems]);
+						}
+					} else {
+						// 非直辖市处理，按原逻辑查找省份下的城市
+						const province = this.list.find(p => {
+							return p.children && p.children.some(c => c.name === cityName);
+						});
+						
+						if (province) {
+							// 找到对应的城市
+							const city = province.children.find(c => c.name === cityName);
+							
+							if (city) {
+								// 设置省份
+								this.activeLevel = 0;
+								this.$set(this.activeItems, 0, province);
+								
+								// 设置城市
+								this.activeLevel = 1;
+								this.$set(this.activeItems, 1, city);
+								this.activeItems.splice(2); // 清除区县及以下选择
+								
+								// 如果城市没有下级，关闭弹窗并返回选择结果
+								if (!city.children || !city.children.length) {
+									this.$refs.popup.close();
+									this.$emit('confirm', [{
+										code: 'CN',
+										level: -1,
+										name: '中国'
+									}, ...this.activeItems]);
+								}
+							}
+						}
+					}
+				} else {
+					// 处理快速选择地区/国家
+					const countryName = this.quickCountys[parseInt(index)];
+					const country = this.country.find(c => c.name === countryName);
+					
+					if (country) {
+						this.activeLevel = -1;
+						this.activeIndex = 0;
+						this.countryName = country.name;
+						this.activeItems = [country];
+						this.$refs.popup.close();
+						this.$emit('confirm', this.activeItems);
+					}
+				}
 			}
 		},
 		computed: {
@@ -279,33 +380,36 @@
 				}
 				return titles[this.activeLevel]
 			},
-			// TODO 后续更新
-			// quickTitle() {
-			// 	const items = {
-			// 		0: '常用城市',
-			// 		1: '常用国家/地区'
-			// 	}
-			// 	return items[this.world]
-			// },
-			// TODO 后续计划 常用选项
-			// quickList() {
-			// 	return this.world === '0' ? quickCitys : quickCountys
-			// }
+			// 
+			quickTitle() {
+				const items = {
+					0: '常用城市',
+					1: '常用国家/地区'
+				}
+				return items[this.world]
+			},
+			// 常用选项
+			quickList() {
+				return this.world === '0' ? this.quickCitys : this.quickCountys
+			}
 		},
 		watch: {
 			// 监听value触发弹窗显示状态以及事件处理
 			async value(val) {
 				if (val) {
-					this.$refs.popup.open()
-					const countyName = this.selected[0]
-					this.world = this.selected.length === 1 ? '1' : '0'
+					this.$refs.popup.open();
+					const countyName = this.selected[0];
+					this.world = this.selected.length === 1 ? '1' : '0';
 					if (this.activeItems.length === 4) {
-						this.activeLevel = 2
+						this.activeLevel = 2;
 					}
-					this.countryName = countyName
-					this.getList()
+					this.countryName = countyName;
+					this.getList();
+					
+					// 重置快速选择的索引为 -1（不选中任何项）
+					this.quickIndex = '-1';
 				} else {
-					this.$refs.popup.close()
+					this.$refs.popup.close();
 				}
 			}
 		}
@@ -374,7 +478,7 @@
 			}
 
 			.uni-load-more {
-				padding: 100px 0;
+				padding: 20px 0;
 			}
 		}
 
